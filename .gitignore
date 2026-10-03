@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+node_modules/
+dataset/raw/
+dataset/processed/
+*.mp4
+*.avi
+*.task
+.pytest_cache/

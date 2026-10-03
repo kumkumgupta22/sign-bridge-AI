@@ -1,0 +1,21 @@
+{
+  "version": "0.1.0",
+  "note": "Starter list. Verify every sign against the ISLRTC dictionary and fill in definitions before recording.",
+  "signs": [
+    {"label": "HELP", "definition": "", "reference_clip": null},
+    {"label": "WATER", "definition": "", "reference_clip": null},
+    {"label": "FOOD", "definition": "", "reference_clip": null},
+    {"label": "DOCTOR", "definition": "", "reference_clip": null},
+    {"label": "HOSPITAL", "definition": "", "reference_clip": null},
+    {"label": "YES", "definition": "", "reference_clip": null},
+    {"label": "NO", "definition": "", "reference_clip": null},
+    {"label": "THANK_YOU", "definition": "", "reference_clip": null},
+    {"label": "SORRY", "definition": "", "reference_clip": null},
+    {"label": "PLEASE", "definition": "", "reference_clip": null},
+    {"label": "STOP", "definition": "", "reference_clip": null},
+    {"label": "CALL", "definition": "", "reference_clip": null},
+    {"label": "EMERGENCY", "definition": "", "reference_clip": null},
+    {"label": "WHERE", "definition": "", "reference_clip": null},
+    {"label": "WHAT", "definition": "", "reference_clip": null}
+  ]
+}
