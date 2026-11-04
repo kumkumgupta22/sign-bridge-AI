@@ -1,7 +1,12 @@
 import numpy as np
 
-from vision.preprocessing import (FRAME_DIM, build_frame, hand_presence,
-                                  normalize_hand, sample_sequence)
+from vision.preprocessing import (
+    FRAME_DIM,
+    build_frame,
+    hand_presence,
+    normalize_hand,
+    sample_sequence,
+)
 
 
 def fake_hand(scale=1.0, offset=(0.3, 0.4, 0.0)):

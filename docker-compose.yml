@@ -6,3 +6,13 @@ services:
     env_file: .env
     ports:
       - "8000:8000"
+    volumes:
+      - ./data:/app/data
+  # Optional: docker compose --profile mongo up   (then set MONGO_URI=mongodb://mongo:27017 in .env)
+  mongo:
+    image: mongo:7
+    profiles: ["mongo"]
+    volumes:
+      - mongo_data:/data/db
+volumes:
+  mongo_data:

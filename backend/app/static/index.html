@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIGNBRIDGE AI – Speech to Sign Reference</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f6f7fb; --card:#fff; --text:#1a1d29; --muted:#5b6275; --accent:#2f5fd0; --border:#d9dce6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#14161d; --card:#1e212b; --text:#eef0f6; --muted:#a3a9bb; --accent:#7ea1ff; --border:#343846; } }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:860px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { margin:0 0 4px; font-size:1.6rem; }
+  .note { color:var(--muted); margin:0 0 20px; }
+  textarea { width:100%; box-sizing:border-box; font-size:1.25rem; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+  button { font-size:1rem; padding:10px 16px; border-radius:10px; border:1px solid var(--border); background:var(--card); color:var(--text); cursor:pointer; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button.rec { background:#c62828; color:#fff; border-color:#c62828; }
+  button:focus-visible, textarea:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  #status { min-height:1.4em; color:var(--muted); }
+  #cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; margin-top:8px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; }
+  .card h3 { margin:0 0 6px; font-size:1.1rem; }
+  .card video { width:100%; border-radius:8px; }
+  .card p { margin:4px 0 0; color:var(--muted); font-size:.9rem; }
+  #missing { color:var(--muted); }
+  h2 { font-size:1.1rem; margin-top:32px; }
+  .msg { padding:8px 12px; border-radius:10px; margin:6px 0; background:var(--card); border:1px solid var(--border); }
+</style>
+</head>
+<body>
+<main>
+  <h1>SIGNBRIDGE AI</h1>
+  <p class="note">Speech → sign reference. Shows reference signs for the words in our controlled vocabulary. It is not a full ISL translation and not a replacement for an interpreter.</p>
+
+  <label for="text"><strong>What did the person say?</strong> (you can edit the text before showing signs)</label>
+  <textarea id="text" rows="3" placeholder="Type, or press Speak…"></textarea>
+  <div class="row">
+    <button id="mic" class="primary">🎤 Speak</button>
+    <button id="show">Show signs</button>
+    <button id="clear">Clear</button>
+    <label><input type="checkbox" id="translate"> Translate to English (Hindi speech)</label>
+  </div>
+  <p id="status" role="status" aria-live="polite"></p>
+
+  <div id="cards"></div>
+  <p id="missing"></p>
+
+  <h2>Conversation history</h2>
+  <div id="history"></div>
+  <button id="wipe">Delete history</button>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let whisper = false, recorder = null, chunks = [], browserRec = null;
+
+function status(msg) { $("status").textContent = msg; }
+
+async function init() {
+  try {
+    const h = await (await fetch("/health")).json();
+    whisper = !!h.whisper_available;
+  } catch (e) { status("Cannot reach the server."); }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!whisper && !SR) {
+    $("mic").disabled = true;
+    status("Speech input is not available in this browser. Please type instead.");
+  } else {
+    status(whisper ? "Speech input: Whisper (server)." : "Speech input: browser speech recognition.");
+  }
+  loadHistory();
+}
+
+async function showSigns() {
+  const text = $("text").value.trim();
+  $("cards").replaceChildren(); $("missing").textContent = "";
+  if (!text) { status("Type or say something first."); return; }
+  const r = await fetch("/api/phrase/map", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ text }) });
+  if (!r.ok) { status("Could not look up signs."); return; }
+  const data = await r.json();
+  for (const s of data.matched) {
+    const card = document.createElement("div"); card.className = "card";
+    const h = document.createElement("h3"); h.textContent = s.label.replace("_", " "); card.append(h);
+    if (s.reference_clip) {
+      const v = document.createElement("video"); v.controls = true; v.loop = true; v.muted = true;
+      v.src = "/clips/" + encodeURIComponent(s.reference_clip); card.append(v);
+    } else {
+      const p = document.createElement("p"); p.textContent = "Reference clip not added yet."; card.append(p);
+    }
+    if (s.definition) { const d = document.createElement("p"); d.textContent = s.definition; card.append(d); }
+    $("cards").append(card);
+  }
+  if (data.unmatched_words.length) {
+    $("missing").textContent = "No reference available for: " + data.unmatched_words.join(", ");
+  }
+  if (!data.matched.length) status("None of these words are in the supported vocabulary.");
+  else status("Showing " + data.matched.length + " reference sign(s). " + data.note);
+  await fetch("/api/conversation", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ speaker: "speech", text }) });
+  loadHistory();
+}
+
+async function loadHistory() {
+  const r = await fetch("/api/conversation/history?limit=20");
+  if (!r.ok) return;
+  const { messages } = await r.json();
+  $("history").replaceChildren(...messages.map((m) => {
+    const d = document.createElement("div"); d.className = "msg";
+    d.textContent = (m.speaker === "sign" ? "🧏 Signer: " : "🗣️ Speaker: ") + m.text; return d;
+  }));
+}
+
+async function toggleWhisper() {
+  if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { status("Microphone permission denied. Please type instead."); return; }
+  chunks = []; recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+  recorder.onstop = async () => {
+    stream.getTracks().forEach((t) => t.stop());
+    $("mic").textContent = "🎤 Speak"; $("mic").classList.remove("rec");
+    status("Transcribing…");
+    const fd = new FormData(); fd.append("file", new Blob(chunks, { type: recorder.mimeType }), "speech.webm");
+    const url = "/api/speech/transcribe?translate=" + $("translate").checked;
+    const r = await fetch(url, { method: "POST", body: fd });
+    const body = await r.json();
+    if (!r.ok) { status(body.detail || "Transcription failed. Please type instead."); return; }
+    $("text").value = body.text; status("Heard: check the text, then it is shown below.");
+    showSigns();
+  };
+  recorder.start(); $("mic").textContent = "⏹ Stop"; $("mic").classList.add("rec"); status("Listening… press Stop when finished.");
+}
+
+function toggleBrowser() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (browserRec) { browserRec.stop(); return; }
+  browserRec = new SR(); browserRec.lang = "en-IN"; browserRec.interimResults = false;
+  browserRec.onresult = (e) => { $("text").value = e.results[0][0].transcript; showSigns(); };
+  browserRec.onerror = (e) => status("Speech error: " + e.error + ". Please type instead.");
+  browserRec.onend = () => { browserRec = null; $("mic").textContent = "🎤 Speak"; $("mic").classList.remove("rec"); };
+  browserRec.start(); $("mic").textContent = "⏹ Stop"; $("mic").classList.add("rec"); status("Listening…");
+}
+
+$("mic").onclick = () => (whisper ? toggleWhisper() : toggleBrowser());
+$("show").onclick = showSigns;
+$("clear").onclick = () => { $("text").value = ""; $("cards").replaceChildren(); $("missing").textContent = ""; status(""); };
+$("wipe").onclick = async () => { await fetch("/api/conversation", { method: "DELETE" }); loadHistory(); };
+init();
+</script>
+</body>
+</html>

@@ -10,7 +10,8 @@ META = Path(__file__).resolve().parents[1] / "dataset" / "metadata"
 
 
 def main(seed: int = 42):
-    rows = list(csv.DictReader(open(META / "labels.csv")))
+    with open(META / "labels.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
     key = "signer_id" if len({r["signer_id"] for r in rows}) >= 3 else None
     groups = sorted({r[key] if key else f"{r['signer_id']}_{r['session_id']}" for r in rows})
     if len(groups) < 3:

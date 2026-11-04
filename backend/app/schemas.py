@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from .config import FEATURES_PER_FRAME, NUM_FRAMES
 
@@ -27,4 +27,15 @@ class PredictResponse(BaseModel):
 
 
 class PhraseRequest(BaseModel):
-    text: str
+    text: str = Field(max_length=500)
+
+
+class SentenceRequest(BaseModel):
+    labels: list[str] = Field(max_length=20)
+
+
+class MessageRequest(BaseModel):
+    speaker: str = Field(pattern="^(sign|speech)$")
+    text: str = Field(min_length=1, max_length=500)
+    label: str | None = None
+    confidence: float | None = None

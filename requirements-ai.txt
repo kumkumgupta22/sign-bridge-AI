@@ -1,0 +1,2 @@
+# Optional heavy extras: Whisper speech recognition
+faster-whisper>=1.0

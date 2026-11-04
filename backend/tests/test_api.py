@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 os.environ["USE_MOCK_PREDICTOR"] = "true"
+os.environ["DB_PATH"] = ":memory:"
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -52,3 +53,28 @@ def test_phrase_map():
     r = client.post("/api/phrase/map", json={"text": "Do you need water, doctor?"})
     labels = [m["label"] for m in r.json()["matched"]]
     assert "WATER" in labels and "DOCTOR" in labels
+
+
+def test_phrase_map_bigram_and_alias():
+    r = client.post("/api/phrase/map", json={"text": "Thank you. Thanks for the medicines"})
+    labels = [m["label"] for m in r.json()["matched"]]
+    assert labels == ["THANK_YOU", "THANK_YOU", "MEDICINE"]
+    assert "for" in r.json()["unmatched_words"]
+
+
+def test_sentence():
+    r = client.post("/api/sentence", json={"labels": ["I", "NEED", "WATER"]})
+    assert r.json()["sentence"] == "I need water."
+
+
+def test_conversation_roundtrip():
+    client.delete("/api/conversation")
+    client.post("/api/conversation", json={"speaker": "sign", "text": "I need water."})
+    msgs = client.get("/api/conversation/history").json()["messages"]
+    assert msgs[-1]["text"] == "I need water." and msgs[-1]["speaker"] == "sign"
+    bad = client.post("/api/conversation", json={"speaker": "robot", "text": "x"})
+    assert bad.status_code == 422
+
+
+def test_web_page_served():
+    assert client.get("/app/").status_code == 200

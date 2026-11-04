@@ -9,3 +9,5 @@ dataset/processed/
 *.avi
 *.task
 .pytest_cache/
+data/
+*.db

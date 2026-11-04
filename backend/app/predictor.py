@@ -27,11 +27,18 @@ class MockPredictor:
 
 
 class RealPredictor:
+    """Wraps the trained scikit-learn model from ml/train.py."""
+
     def __init__(self, model_path: str):
-        raise NotImplementedError("Plug in Member 1's model here (e.g. torch.load).")
+        from ml.inference import SignClassifier
+
+        self._clf = SignClassifier(model_path)
+
+    def predict(self, frames: np.ndarray, labels: list[str]) -> tuple[str, float]:
+        return self._clf.predict(frames)
 
 
 def get_predictor() -> Predictor:
     if config.USE_MOCK_PREDICTOR:
         return MockPredictor()
-    return RealPredictor(str(config.REPO_ROOT / "ml" / "models" / "model.pt"))
+    return RealPredictor(str(config.MODEL_PATH))

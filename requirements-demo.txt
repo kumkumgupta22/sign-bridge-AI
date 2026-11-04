@@ -1,0 +1,8 @@
+# Needed on the machine with the webcam (recording, training, live demo)
+mediapipe
+opencv-python
+numpy
+scikit-learn
+joblib
+matplotlib
+pyttsx3

@@ -1,21 +1,10 @@
 # SIGNBRIDGE AI
-Two-way communication aid for a controlled vocabulary of ISL signs (MVP). Not a universal ISL translator.
+Two-way communication aid for a controlled vocabulary of ISL signs (MVP). Not a universal ISL translator and not a replacement for an interpreter.
 
-## Run the API (mock predictor)
-```
-pip install -r backend/requirements.txt
-cp .env.example .env
-uvicorn backend.app.main:app --reload
-pytest backend/tests -q
-```
-Docs at http://localhost:8000/docs
+- Sign -> speech: camera -> MediaPipe hand landmarks -> classifier -> confirm -> phrase -> voice (`python -m vision.demo`)
+- Speech -> sign reference: Whisper or browser speech -> vocabulary lookup -> reference clips (`/app/`)
 
-## Data pipeline (Member 2)
-1. Download `hand_landmarker.task` (link in `vision/landmarks.py`) to `models/`.
-2. `pip install mediapipe opencv-python numpy`
-3. `python -m vision.camera` - check detection
-4. `python -m vision.collect --label HELP --signer S01 --session 1`
-5. `python -m vision.quality_report`, then `python -m vision.split_dataset`
+See `docs/RUNBOOK.md` for the step-by-step commands, `docs/API.md` for the API, `docs/FEATURE_FORMAT.md` for the data contract.
 
 ## Branching
-`main` (stable) <- `develop` <- `feature/<member>-<task>`. PRs need one review and green CI.
+`main` (stable) <- `develop` <- `feature/<task>`. Run `ruff check backend vision ml --fix` and `pytest -q` before pushing.
